@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_internal: 15s
+
+scrape_configs:
+  - job_name: 'haproxy_exporter'
+    dns_sd_configs:
+      - names: ['tasks.haproxy_exporter']
+        type: A
+        port: 9101
+
+
+  - job_name: 'cadvisor'
+    dns_sd_configs:
+      - names: ['tasks.cadvisor']
+        type: A
+        port: 8080
+

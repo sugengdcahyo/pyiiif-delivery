@@ -1,0 +1,83 @@
+version: '3.7'
+
+services:
+  prometheus:
+    image: prom/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - 9090:9090
+    networks:
+      - monitor-net
+      - swarm-net
+    deploy:
+      placement:
+        constraints:
+          - node.platform.os == linux
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitor-net
+      - swarm-net
+    deploy:
+      placement:
+        constraints:
+          - node.platform.os == linux
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.platform.os == linux
+    # ports:
+    #   - 8080:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitor-net
+      - swarm-net
+
+  haproxy_exporter:
+    image: prom/haproxy-exporter
+    ports:
+      - 9101:9101
+    environment:
+      - HAPROXY_STATS_URL=http://openslide_haproxy-lb:8404/stats;csv
+    networks:
+      - monitor-net
+      - swarm-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.platform.os == linux
+
+networks:
+  monitor-net:
+    driver: overlay
+  swarm-net:
+    external: true
+
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
