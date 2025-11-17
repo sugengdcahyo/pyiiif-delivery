@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  iiif-openslide:
+    image: mekarsalab/py-iiif:latest
+    deploy:
+      mode: replicated
+      replicas: 4
+      endpoint_mode: dnsrr
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+      restart_policy:
+        condition: on-failure
+    command: >
+      sh -c "gunicorn -w ${GUNICORN_WORKERS:-2} -k gthread --threads ${GUNICORN_THREADS:-2} \
+      -b 0.0.0.0:5050 wsgi:app --timeout ${GUNICORN_TIMEOUT:-120}"
+    env_file:
+      - .env
+    environment:
+      - PORT=5050
+      - PYTHONBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - GUNICORN_WORKERS=4
+      - GUNICORN_THREADS=4
+    networks:
+      - openslide-net
+      - swarm-net
+
+  haproxy-lb:
+    # image: haproxy:alpine
+    image: mekarsalab/py-iiif-haproxy:dwrr
+    user: root
+    ports:
+      - target: 80
+        published: 8181
+        protocol: tcp
+        mode: host
+      - target: 8404
+        published: 8404
+        protocol: tcp
+        mode: host
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy/dwrr.lua:/usr/local/etc/haproxy/dwrr.lua:ro
+      - haproxy_socket:/var/lib/haproxy
+    environment:
+      - CPU_LIMIT=2.0
+      - MEM_LIMIT=2147483648
+      - NET_LIMIT=100000000
+    networks:
+      - openslide-net
+      - swarm-net
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+  agent:
+    image: mekarsalab/py-iiif-agent:latest
+    environment:
+      - PROM_URL=http://monitor_prometheus:9090
+      - SERVICE_NAME=openslide_iiif-openslide
+      - CPU_LIMIT=2.0
+      - MEM_LIMIT=2147483648
+      - NET_LIMIT=100000000
+    ports:
+      - target: 9200
+        published: 9200
+        protocol: tcp
+        mode: host
+    deploy:
+      mode: global   # satu agent per node
+    networks:
+      - swarm-net
+
+volumes:
+  haproxy_socket:
+
+networks:
+  openslide-net: 
+    driver: overlay
+  swarm-net:
+    external: true

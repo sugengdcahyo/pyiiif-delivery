@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  ozone-om:
+    image: apache/ozone:latest
+    command: ["ozone","om"]
+    environment:
+      - OZONE_OPTS=-Dozone.metadata.dirs=/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    networks:
+      - ozone-net
+    volumes:
+      - /mnt/glusterfs/ozone/om:/data
+
+  ozone-scm:
+    image: apache/ozone:latest
+    command: ["ozone","scm"]
+    environment:
+      - OZONE_OPTS=-Dozone.metadata.dirs=/data
+    deploy:
+      replicas: 1
+    networks:
+      - ozone-net
+    volumes:
+      - /mnt/glusterfs/ozone/scm:/data
+
+  ozone-datanode:
+    image: apache/ozone:latest
+    command: ["ozone","datanode"]
+    environment:
+      - OZONE_OPTS=-Dozone.metadata.dirs=/data
+    deploy:
+      replicas: 3
+    networks:
+      - ozone-net
+    volumes:
+      - /mnt/glusterfs/ozone/datanode:/data
+
+  s3g:
+    image: apache/ozone:latest
+    command: ["ozone","s3g"]
+    environment:
+      - OZONE_OPTS=-Dozone.metadata.dirs=/data
+    deploy:
+      replicas: 1
+    ports:
+      - "9878:9878"
+    networks:
+      - ozone-net
+
+  recon:
+    image: apache/ozone:latest
+    command: ["ozone","recon"]
+    environment:
+      - OZONE_OPTS=-Dozone.metadata.dirs=/data
+      - OZONE_RECON_DB_DIR=/recondata
+    deploy:
+      replicas: 1
+    ports:
+      - "9888:9888"
+    networks:
+      - ozone-net
+    volumes:
+      - /mnt/glusterfs/ozone/recon:/data
+      - /mnt/glusterfs/ozone/recon/recondb:/recondata
+
+networks:
+  ozone-net:
+    external: true
+ 
