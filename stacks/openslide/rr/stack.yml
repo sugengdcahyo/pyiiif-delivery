@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   iiif-openslide:
-    image: mekarsalab/py-iiif:latest
+    image: mekarsalab/py-iiif:v1.2
     deploy:
       mode: replicated
       replicas: 3
@@ -43,7 +43,7 @@ services:
         protocol: tcp
         mode: host
     volumes:
-      - ./haproxy/haproxy-rr.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     networks:
       - openslide-net
       - swarm-net

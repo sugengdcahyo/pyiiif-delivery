@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   iiif-openslide:
-    image: mekarsalab/py-iiif:latest
+    image: mekarsalab/py-iiif:v1.2
     deploy:
       mode: replicated
       replicas: 4
@@ -87,3 +87,4 @@ networks:
     driver: overlay
   swarm-net:
     external: true
+
