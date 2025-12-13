@@ -15,6 +15,10 @@ CPU_LIMIT = float(os.getenv("CPU_LIMIT", 2.0))          # core limit
 MEM_LIMIT = float(os.getenv("MEM_LIMIT", 2 * 1024**3))  # default 2GB
 NET_LIMIT = float(os.getenv("NET_LIMIT", 5 * 1024**2))  # default 5MB/s
 
+SMOOTH_ALPHA = float(os.getenv("SMOOTH_ALPHA", 0.3))
+
+last_weights = {}
+
 # ============================
 # PROMETHEUS QUERIES
 # ============================
@@ -76,7 +80,7 @@ def extract_task_index(task_name):
 # WEIGHT CALCULATION (DWRR)
 # ============================
 
-def calc_weight(cpu, mem, net):
+def calc_raw_weight(cpu, mem, net):
     # Normalize CPU
     cpu_pct = min(cpu / CPU_LIMIT, 1.0)
     cpu_score = 1 - cpu_pct
@@ -98,6 +102,20 @@ def calc_weight(cpu, mem, net):
 
     weight = max(1, int(final_score * 256))
     return weight
+
+def smooth_weight(server_name, raw):
+    old = last_weights.get(server_name, raw)
+    smooth = (SMOOTH_ALPHA * raw) + ((1 - SMOOTH_ALPHA) * old)
+
+    if smooth < 1:
+        smooth = 1 
+    if smooth > 256:
+        smooth = 256
+
+    smooth_int = int(smooth)
+    last_weights[server_name] = smooth_int
+
+    return smooth_int
 
 # ============================
 # MAIN ENDPOINT
@@ -124,16 +142,16 @@ def weight():
         if not idx:
             continue
 
-        cpu_val = cpu_map.get(task, 0.0)
-        mem_val = mem_map.get(task, 0.0)
-        net_val = net_map.get(task, 0.0)
+        cpu = cpu_map.get(task, 0.0)
+        mem = mem_map.get(task, 0.0)
+        net = net_map.get(task, 0.0)
 
-        w = calc_weight(cpu_val, mem_val, net_val)
+        raw_w = calc_raw_weight(cpu, mem, net)
+        smooth_w = smooth_weight(f"iiif{idx}", raw_w)
 
-        srv_name = f"iiif{idx}"
-        weights[srv_name] = w
+        weights[f"iiif{idx}"] = smooth_w
 
-        print(f"[{srv_name}] CPU={cpu_val:.4f}, MEM={mem_val}, NET={net_val:.2f}, Weight={w}")
+        print(f"Task={task}, RAW={raw_w}, SMOOTH={smooth_w}, CPU={cpu:.4f}, MEM={mem}, NET={net:.2f}")
 
     return {"weights": weights}, 200
 
