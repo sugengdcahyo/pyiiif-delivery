@@ -15,6 +15,10 @@ CPU_LIMIT = float(os.getenv("CPU_LIMIT", 2.0))          # core limit
 MEM_LIMIT = float(os.getenv("MEM_LIMIT", 2 * 1024**3))  # default 2GB
 NET_LIMIT = float(os.getenv("NET_LIMIT", 5 * 1024**2))  # default 5MB/s
 
+CPU_WEIGHT = float(os.getenv("CPU_WEIGHT", 0.6))
+NET_WEIGHT = float(os.getenv("NET_WEIGHT", 0.3))
+MEM_WEIGHT = float(os.getenv("MEM_WEIGHT", 0.1))
+
 SMOOTH_ALPHA = float(os.getenv("SMOOTH_ALPHA", 0.3))
 
 last_weights = {}
@@ -95,9 +99,9 @@ def calc_raw_weight(cpu, mem, net):
 
     # Final DWRR score
     final_score = (
-        0.4 * cpu_score +
-        0.3 * mem_score +
-        0.3 * net_score
+        CPU_WEIGHT * cpu_score +
+        MEM_WEIGHT * mem_score +
+        NET_WEIGHT * net_score
     )
 
     weight = max(1, int(final_score * 256))
