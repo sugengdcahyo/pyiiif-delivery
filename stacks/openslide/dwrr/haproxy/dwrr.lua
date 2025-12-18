@@ -2,7 +2,7 @@ local json = require("cjson")
 local http = require("socket.http")
 
 local function get_weights()
-    local body, code = http.request("http://openslide_agent:9200/weight")
+    local body, code = http.request("http://openslide_agent:9200/weight?algo=dwrr")
     if code ~= 200 or not body then
         core.Warning("Agent API gagal, code=" .. tostring(code))
         return {}
